@@ -3,7 +3,7 @@
   "plugin": {
     "name": "idassistmcp",
     "entryPoint": "idassistmcp_plugin.py",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "description": "Standalone MCP server plugin exposing IDA Pro's analysis capabilities to LLM clients",
     "license": "MIT",
     "urls": {
