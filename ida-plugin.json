@@ -1,13 +1,13 @@
 {
   "IDAMetadataDescriptorVersion": 1,
   "plugin": {
-    "name": "idassistmcp",
+    "name": "IDAssistMCP",
     "entryPoint": "idassistmcp_plugin.py",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "description": "Standalone MCP server plugin exposing IDA Pro's analysis capabilities to LLM clients",
     "license": "MIT",
     "urls": {
-      "repository": "https://github.com/jtang613/IDAssistMCP"
+      "repository": "https://github.com/symgraph/IDAssistMCP"
     },
     "authors": [
       {
