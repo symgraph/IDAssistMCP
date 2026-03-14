@@ -39,6 +39,13 @@ class IDAssistMCPPanel(idaapi.PluginForm):
 
     def OnCreate(self, form):
         """Called by IDA when the form is first created."""
+        from ..qt_check import check_qt_platform_plugins
+        ok, err = check_qt_platform_plugins()
+        if not ok:
+            ida_kernwin.msg(f"[IDAssistMCP] ERROR: Qt platform plugins missing, "
+                            f"cannot create config panel: {err}\n")
+            return
+
         try:
             from PySide6.QtWidgets import (
                 QHBoxLayout,
