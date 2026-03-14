@@ -5,8 +5,8 @@ Provides server settings, analysis settings, plugin settings,
 and per-tool enable/disable via a table widget.
 """
 
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import (
+from ..qt_compat import (
+    Qt, Signal,
     QCheckBox,
     QComboBox,
     QGroupBox,
@@ -180,13 +180,13 @@ class ConfigTab(QWidget):
         self._tools_table = QTableWidget()
         self._tools_table.setColumnCount(4)
         self._tools_table.setHorizontalHeaderLabels(["Enabled", "Name", "Category", "Type"])
-        self._tools_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
-        self._tools_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        self._tools_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
-        self._tools_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        self._tools_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Fixed)
+        self._tools_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        self._tools_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        self._tools_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeToContents)
         self._tools_table.setColumnWidth(0, 60)
         self._tools_table.verticalHeader().setVisible(False)
-        self._tools_table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
+        self._tools_table.setSelectionMode(QTableWidget.NoSelection)
 
         self._populate_tools_table()
 
@@ -206,20 +206,20 @@ class ConfigTab(QWidget):
             cb_widget = QWidget()
             cb_layout = QHBoxLayout(cb_widget)
             cb_layout.addWidget(cb)
-            cb_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            cb_layout.setAlignment(Qt.AlignCenter)
             cb_layout.setContentsMargins(0, 0, 0, 0)
             self._tools_table.setCellWidget(row, 0, cb_widget)
             self._tool_checkboxes[tool.name] = cb
 
             # Name
             name_item = QTableWidgetItem(tool.display_name)
-            name_item.setFlags(name_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            name_item.setFlags(name_item.flags() & ~Qt.ItemIsEditable)
             name_item.setToolTip(f"{tool.name}\n{tool.description}")
             self._tools_table.setItem(row, 1, name_item)
 
             # Category
             cat_item = QTableWidgetItem(tool.category)
-            cat_item.setFlags(cat_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            cat_item.setFlags(cat_item.flags() & ~Qt.ItemIsEditable)
             self._tools_table.setItem(row, 2, cat_item)
 
             # Type (annotation)
@@ -227,7 +227,7 @@ class ConfigTab(QWidget):
                 tool.annotation, tool.annotation
             )
             type_item = QTableWidgetItem(type_label)
-            type_item.setFlags(type_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            type_item.setFlags(type_item.flags() & ~Qt.ItemIsEditable)
             self._tools_table.setItem(row, 3, type_item)
 
     def _select_all_tools(self):

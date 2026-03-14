@@ -8,8 +8,8 @@ QLogHandler that bridges Python logging to Qt signals.
 import logging
 from datetime import datetime
 
-from PySide6.QtCore import QObject, Signal
-from PySide6.QtWidgets import (
+from ..qt_compat import (
+    QObject, Signal,
     QHBoxLayout,
     QLabel,
     QPlainTextEdit,
@@ -75,7 +75,7 @@ class LogTab(QWidget):
         self._log_text = QPlainTextEdit()
         self._log_text.setReadOnly(True)
         self._log_text.setMaximumBlockCount(5000)
-        self._log_text.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
+        self._log_text.setLineWrapMode(QPlainTextEdit.WidgetWidth)
         layout.addWidget(self._log_text)
 
     def _init_log_handler(self):

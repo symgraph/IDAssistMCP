@@ -40,7 +40,7 @@ class IDAssistMCPPanel(idaapi.PluginForm):
     def OnCreate(self, form):
         """Called by IDA when the form is first created."""
         try:
-            from PySide6.QtWidgets import (
+            from ..qt_compat import (
                 QHBoxLayout,
                 QPushButton,
                 QTabWidget,
