@@ -5,7 +5,7 @@ This module provides 38 IDA Pro integration tools registered as
 FastMCP tools. All tools that call IDA APIs use @_ida_main_thread to dispatch
 onto IDA's main thread (required for both reads and writes).
 
-Consolidated tools (5): get_code, comments_tool, variables_tool, types_tool, xrefs_tool
+Consolidated tools (5): get_code, comments, variables, types, xrefs
 Standalone tools (33): see register_tools() for the full list
 """
 
@@ -357,12 +357,12 @@ def register_tools(mcp: FastMCP, disabled_tools=None):
         return blocks
 
     # ================================================================== #
-    #  6. xrefs_tool (consolidated — absorbs get_xrefs + get_callers_callees)
+    #  6. xrefs (consolidated — absorbs get_xrefs + get_callers_callees)
     # ================================================================== #
 
-    @_tool("xrefs_tool", annotations=READ_ONLY)
+    @_tool("xrefs", annotations=READ_ONLY)
     @_ida_main_thread
-    def xrefs_tool(address_or_function: str, ctx: Context,
+    def xrefs(address_or_function: str, ctx: Context,
                    direction: str = "both",
                    include_calls: bool = False) -> dict:
         """Get cross-references and optionally callers/callees for an address or function.
@@ -440,12 +440,12 @@ def register_tools(mcp: FastMCP, disabled_tools=None):
         return result
 
     # ================================================================== #
-    #  7. comments_tool (consolidated — absorbs get_comments + set_comment)
+    #  7. comments (consolidated — absorbs get_comments + set_comment)
     # ================================================================== #
 
-    @_tool("comments_tool", annotations=MODIFY)
+    @_tool("comments", annotations=MODIFY)
     @_ida_main_thread
-    def comments_tool(action: str, ctx: Context,
+    def comments(action: str, ctx: Context,
                       address_or_function: str = "",
                       text: str = "",
                       comment_type: str = "regular") -> dict:
@@ -544,12 +544,12 @@ def register_tools(mcp: FastMCP, disabled_tools=None):
             return {"error": f"Unknown action '{action}'. Use 'get', 'set', 'list', or 'remove'."}
 
     # ================================================================== #
-    #  8. variables_tool (consolidated — absorbs get_variables + rename_variable)
+    #  8. variables (consolidated — absorbs get_variables + rename_variable)
     # ================================================================== #
 
-    @_tool("variables_tool", annotations=MODIFY)
+    @_tool("variables", annotations=MODIFY)
     @_ida_main_thread
-    def variables_tool(action: str, ctx: Context,
+    def variables(action: str, ctx: Context,
                        function_name_or_address: str = "",
                        var_name: str = "",
                        new_name: str = "") -> dict:
@@ -617,12 +617,12 @@ def register_tools(mcp: FastMCP, disabled_tools=None):
             return {"error": f"Unknown action '{action}'. Use 'list' or 'rename'."}
 
     # ================================================================== #
-    #  9. types_tool (consolidated — absorbs get_types + set_type + create_struct + create_enum)
+    #  9. types (consolidated — absorbs get_types + set_type + create_struct + create_enum)
     # ================================================================== #
 
-    @_tool("types_tool", annotations=MODIFY)
+    @_tool("types", annotations=MODIFY)
     @_ida_main_thread
-    def types_tool(action: str, ctx: Context,
+    def types(action: str, ctx: Context,
                    filter: str = "",
                    address: str = "",
                    type_string: str = "",
@@ -1395,26 +1395,49 @@ def register_tools(mcp: FastMCP, disabled_tools=None):
         else:
             return f"Failed to navigate to {hex(ea)}"
 
-    @_tool("set_bookmark", annotations=MODIFY)
+    @_tool("bookmarks", annotations=MODIFY)
     @_ida_main_thread
-    def set_bookmark(address: str, description: str, ctx: Context,
-                     slot: int = 0) -> str:
-        """Create a position bookmark in IDA.
+    def bookmarks(action: str, ctx: Context,
+                  address: str = "", description: str = "",
+                  slot: int = 0) -> str:
+        """Manage bookmarks: list, set, or remove position bookmarks.
 
         Args:
-            address: Hex address for the bookmark
-            description: Bookmark description text
-            slot: Bookmark slot number (0-1023)
-
-        Returns:
-            Success message.
+            action: Operation to perform: 'list', 'set', or 'remove'
+            address: Hex address (required for set/remove)
+            description: Bookmark description text (for set)
+            slot: Bookmark slot number 0-1023 (for set/remove)
         """
-        ea = parse_address(address)
-        if ea is None:
-            return f"Invalid address: {address}"
+        if action == "list":
+            results = []
+            for i in range(1024):
+                ea = idc.get_bookmark(i)
+                if ea is None or ea == idaapi.BADADDR:
+                    continue
+                desc = idc.get_bookmark_desc(i)
+                results.append(f"Slot {i}: {hex(ea)} - {desc}")
+            return "\n".join(results) if results else "No bookmarks found"
 
-        idc.put_bookmark(ea, 0, 0, 0, slot, description)
-        return f"Bookmark set at {hex(ea)} (slot {slot}): {description}"
+        elif action == "set":
+            if not address:
+                return "Error: address is required for set"
+            ea = parse_address(address)
+            if ea is None:
+                return f"Invalid address: {address}"
+            idc.put_bookmark(ea, 0, 0, 0, slot, description or "Bookmark")
+            return f"Bookmark set at {hex(ea)} (slot {slot}): {description or 'Bookmark'}"
+
+        elif action == "remove":
+            if not address:
+                return "Error: address is required for remove"
+            ea = parse_address(address)
+            if ea is None:
+                return f"Invalid address: {address}"
+            idc.put_bookmark(ea, 0, 0, 0, slot, "")
+            return f"Removed bookmark at slot {slot}"
+
+        else:
+            return f"Invalid action '{action}'. Use 'list', 'set', or 'remove'"
 
     # ================================================================== #
     #  29. get_current_address (NEW — feature parity with BinAssistMCP)

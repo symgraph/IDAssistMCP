@@ -17,9 +17,9 @@ def analyze_function_prompt(function_name: str) -> str:
     return f"""Analyze the function '{function_name}' using these steps:
 
 1. **Get Function Code**: Call `get_code` with format='decompile' to get the Hex-Rays pseudo-C code
-2. **Examine Variables**: Call `variables_tool` with action='list' to identify local variables and parameters
-3. **Find Cross-References**: Call `xrefs_tool` with include_calls=true to understand callers and callees
-4. **Check Comments**: Call `comments_tool` with action='get' to see existing annotations
+2. **Examine Variables**: Call `variables` with action='list' to identify local variables and parameters
+3. **Find Cross-References**: Call `xrefs` with include_calls=true to understand callers and callees
+4. **Check Comments**: Call `comments` with action='get' to see existing annotations
 
 After gathering this information, provide a summary that includes:
 - **Purpose**: What does this function do?
@@ -39,8 +39,8 @@ def identify_vulnerability_prompt(function_name: str) -> str:
 
 1. **Get Function Code**: Call `get_code` with format='decompile' for high-level view
 2. **Get Disassembly**: Call `get_code` with format='disasm' for low-level details
-3. **Examine Variables**: Call `variables_tool` with action='list' to identify buffer sizes and types
-4. **Find Called Functions**: Call `xrefs_tool` with include_calls=true to see what dangerous functions are called
+3. **Examine Variables**: Call `variables` with action='list' to identify buffer sizes and types
+4. **Find Called Functions**: Call `xrefs` with include_calls=true to see what dangerous functions are called
 
 ## Security Checklist
 
@@ -85,8 +85,8 @@ def document_function_prompt(function_name: str) -> str:
 ## Gather Information
 
 1. **Get Code**: Call `get_code` with format='decompile' for C-style representation
-2. **Get Variables**: Call `variables_tool` with action='list' to understand parameter and local types
-3. **Get Callers**: Call `xrefs_tool` with include_calls=true to find what calls this function and what it calls
+2. **Get Variables**: Call `variables` with action='list' to understand parameter and local types
+3. **Get Callers**: Call `xrefs` with include_calls=true to find what calls this function and what it calls
 
 ## Generate Documentation
 
@@ -123,7 +123,7 @@ def trace_data_flow_prompt(address: str) -> str:
 1. **Get Context**: Call `get_code` with format='disasm' for the instruction at this address
 2. **Find Function**: Call `get_function_by_address` to determine which function contains this address
 3. **Get Function Code**: Call `get_code` with format='decompile' for the containing function
-4. **Trace References**: Call `xrefs_tool` to find related addresses
+4. **Trace References**: Call `xrefs` to find related addresses
 
 ## Data Flow Analysis
 
@@ -161,9 +161,9 @@ def compare_functions_prompt(func1: str, func2: str) -> str:
 
 For each function, gather:
 1. **Decompiled Code**: Call `get_code` with format='decompile'
-2. **Variables**: Call `variables_tool` with action='list'
+2. **Variables**: Call `variables` with action='list'
 3. **Basic Blocks**: Call `get_basic_blocks` for structure analysis
-4. **Cross-References**: Call `xrefs_tool`
+4. **Cross-References**: Call `xrefs`
 
 ## Comparison Analysis
 
@@ -202,7 +202,7 @@ def reverse_engineer_struct_prompt(address: str) -> str:
 ## Analysis Steps
 
 1. **Get Context**: Call `get_data_at` to see the raw data
-2. **Find Usage**: Call `xrefs_tool` to find all references to this address
+2. **Find Usage**: Call `xrefs` to find all references to this address
 3. **Get Functions**: For each function that references it, call `get_code` with format='decompile'
 4. **Analyze Access Patterns**: Look at how the data is accessed
 
@@ -237,7 +237,7 @@ typedef struct {{
 }} StructureName;
 ```
 
-Also suggest calling `types_tool` with action='create_struct' to define this type in IDA Pro."""
+Also suggest calling `types` with action='create_struct' to define this type in IDA Pro."""
 
 
 def trace_network_data_prompt() -> str:
@@ -265,7 +265,7 @@ Search for functions calling:
 
 For each network function found:
 
-1. **Get Callers**: Call `xrefs_tool` with include_calls=true to find all callers
+1. **Get Callers**: Call `xrefs` with include_calls=true to find all callers
 2. **Build Call Graph**: Recursively trace callers up to application-level handlers
 3. **Get Callees**: Trace what functions prepare data for sending
 
@@ -274,7 +274,7 @@ For each network function found:
 For each send/recv wrapper function:
 
 1. **Get Code**: Call `get_code` with format='decompile' to see high-level logic
-2. **Get Variables**: Call `variables_tool` with action='list' to identify buffer parameters
+2. **Get Variables**: Call `variables` with action='list' to identify buffer parameters
 3. **Trace Buffer Origins**: Follow buffer pointers back to their allocation
 
 ### Payload Structure Analysis
@@ -322,7 +322,7 @@ Provide:
 4. **Data Flow Diagram**: How data moves from application to network
 5. **Vulnerability Report**: Any security issues found with severity ratings
 
-Use `comments_tool` with action='set' to annotate discovered protocol structures and `types_tool` with action='create_struct' to create IDA type definitions."""
+Use `comments` with action='set' to annotate discovered protocol structures and `types` with action='create_struct' to create IDA type definitions."""
 
 
 # Registry of available prompts
