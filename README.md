@@ -7,7 +7,7 @@ Standalone MCP (Model Context Protocol) server plugin for **IDA Pro 9.x** that e
 ## Features
 
 - **38 MCP tools** covering binary analysis, decompilation, cross-references, symbol management, type system, navigation, and more
-- **5 consolidated tools** with `action`/`format`/`direction` parameters for comments, variables, types, xrefs, and code
+- **6 consolidated tools** with `action`/`format`/`direction` parameters for comments, variables, types, xrefs, bookmarks, and code
 - **8 MCP resources** for browsable binary metadata (triage, functions, imports, exports, strings, info, segments, sections)
 - **7 guided prompts** for common reverse engineering workflows (function analysis, vulnerability identification, documentation, data flow tracing, function comparison, struct recovery, network protocol analysis)
 - **SSE and Streamable HTTP transports** via Hypercorn ASGI server
@@ -113,22 +113,22 @@ Configure via environment variables with the `IDASSISTMCP_` prefix:
 ### Cross-References (1 consolidated)
 | Tool | Actions | Description |
 |------|---------|-------------|
-| `xrefs_tool` | `direction`: to/from/both, `include_calls`: bool | Xrefs and optional callers/callees for an address |
+| `xrefs` | `direction`: to/from/both, `include_calls`: bool | Xrefs and optional callers/callees for an address |
 
 ### Comments (1 consolidated)
 | Tool | Actions | Description |
 |------|---------|-------------|
-| `comments_tool` | `action`: get, set, list, remove | Manage comments (regular, repeatable, function) |
+| `comments` | `action`: get, set, list, remove | Manage comments (regular, repeatable, function) |
 
 ### Variables (1 consolidated)
 | Tool | Actions | Description |
 |------|---------|-------------|
-| `variables_tool` | `action`: list, rename | List or rename local variables via Hex-Rays |
+| `variables` | `action`: list, rename | List or rename local variables via Hex-Rays |
 
 ### Types (2 — 1 consolidated + 1 standalone)
 | Tool | Actions / Description |
 |------|----------------------|
-| `types_tool` | `action`: list, set, create_struct, create_enum — manage IDB types |
+| `types` | `action`: list, set, create_struct, create_enum — manage IDB types |
 | `get_classes` | List struct/class types from type library |
 
 ### Function Discovery (5)
@@ -174,7 +174,7 @@ Configure via environment variables with the `IDASSISTMCP_` prefix:
 | Tool | Description |
 |------|-------------|
 | `navigate_to` | Move IDA cursor to address |
-| `set_bookmark` | Create position bookmark |
+| `bookmarks` | **Consolidated bookmark management** - actions: `list`, `set`, `remove` |
 | `get_current_address` | Get address and context at cursor position |
 | `get_current_function` | Get function info at cursor position |
 
