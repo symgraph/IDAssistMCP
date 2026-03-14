@@ -86,34 +86,18 @@ class IDAssistMCPPlugin(idaapi.plugin_t):
         ida_kernwin.msg("[IDAssistMCP] Plugin loaded. "
                         "Ctrl+Shift+M=toggle server, Ctrl+Shift+N=config panel\n")
 
-        # Validate Qt environment (UI only — server is pure async, no Qt)
-        self._qt_ok = True
-        self._qt_diag = ""
-        try:
-            from idassist_mcp.qt_check import check_qt_environment
-            qt_ok, qt_diag = check_qt_environment()
-            if qt_ok:
-                ida_kernwin.msg(f"[IDAssistMCP] INFO: Qt env: {qt_diag}\n")
-            else:
-                ida_kernwin.msg(f"[IDAssistMCP] ERROR: Qt environment check failed: {qt_diag}\n")
-                self._qt_ok = False
-                self._qt_diag = qt_diag
-        except Exception as e:
-            ida_kernwin.msg(f"[IDAssistMCP] WARN: Qt check failed: {e}\n")
-
         # Register menu actions
         self._register_menu_action()
         self._register_config_action()
 
-        # Auto-startup if configured (server doesn't need Qt)
+        # Auto-startup if configured
         if self._config and self._config.plugin.auto_startup:
             ida_kernwin.msg("[IDAssistMCP] Auto-starting server...\n")
             self._start_server()
 
-        # Defer panel open until IDA's UI is fully ready (only if Qt is OK)
-        if self._qt_ok:
-            self._deferred_hook = _DeferredOpenHook(self)
-            self._deferred_hook.hook()
+        # Defer panel open until IDA's UI is fully ready
+        self._deferred_hook = _DeferredOpenHook(self)
+        self._deferred_hook.hook()
 
         return idaapi.PLUGIN_KEEP
 
@@ -267,14 +251,6 @@ class _OpenConfigPanelHandler(idaapi.action_handler_t):
         self._plugin = plugin
 
     def activate(self, ctx):
-        if not self._plugin._qt_ok:
-            ida_kernwin.warning(
-                f"IDAssistMCP: Qt environment is not usable.\n\n"
-                f"{self._plugin._qt_diag}\n\n"
-                "The config panel cannot be opened. "
-                "The MCP server can still be toggled via Ctrl+Shift+M."
-            )
-            return 1
         try:
             from idassist_mcp.ui.config_panel import IDAssistMCPPanel
             IDAssistMCPPanel.open(self._plugin)
