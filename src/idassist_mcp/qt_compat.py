@@ -7,21 +7,79 @@ Consumer files should use explicit imports:
 """
 
 try:
-    from PySide6.QtCore import *      # noqa: F401,F403
-    from PySide6.QtGui import *       # noqa: F401,F403
-    from PySide6.QtWidgets import *   # noqa: F401,F403
-    from PySide6.QtCore import Signal
+    from PySide6.QtCore import QObject, Qt, QTimeZone, Signal
     from PySide6.QtGui import QAction
+    from PySide6.QtWidgets import (
+        QCheckBox,
+        QComboBox,
+        QGroupBox,
+        QHBoxLayout,
+        QHeaderView,
+        QLabel,
+        QLineEdit,
+        QPlainTextEdit,
+        QPushButton,
+        QScrollArea,
+        QSpinBox,
+        QTableWidget,
+        QTableWidgetItem,
+        QTabWidget,
+        QVBoxLayout,
+        QWidget,
+    )
     QT_BINDING = "PySide6"
 except ImportError:
-    from PyQt5.QtCore import *        # noqa: F401,F403
-    from PyQt5.QtGui import *         # noqa: F401,F403
-    from PyQt5.QtWidgets import *     # noqa: F401,F403
-    from PyQt5.QtCore import pyqtSignal as Signal  # noqa: F401
-    from PyQt5.QtWidgets import QAction  # noqa: F401
+    from PyQt5.QtCore import QObject, Qt, QTimeZone, pyqtSignal as Signal
+    from PyQt5.QtWidgets import (
+        QAction,
+        QCheckBox,
+        QComboBox,
+        QGroupBox,
+        QHBoxLayout,
+        QHeaderView,
+        QLabel,
+        QLineEdit,
+        QPlainTextEdit,
+        QPushButton,
+        QScrollArea,
+        QSpinBox,
+        QTableWidget,
+        QTableWidgetItem,
+        QTabWidget,
+        QVBoxLayout,
+        QWidget,
+    )
     QT_BINDING = "PyQt5"
 
 QT_AVAILABLE = QT_BINDING is not None
+
+__all__ = [
+    "QAction",
+    "QCheckBox",
+    "QComboBox",
+    "QGroupBox",
+    "QHBoxLayout",
+    "QHeaderView",
+    "QLabel",
+    "QLineEdit",
+    "QObject",
+    "QPlainTextEdit",
+    "QPushButton",
+    "QScrollArea",
+    "QSpinBox",
+    "QTableWidget",
+    "QTableWidgetItem",
+    "QTabWidget",
+    "QTimeZone",
+    "QVBoxLayout",
+    "QWidget",
+    "QT_AVAILABLE",
+    "QT_BINDING",
+    "Qt",
+    "Signal",
+    "exec_dialog",
+    "utc_timezone",
+]
 
 
 def exec_dialog(obj, *args):
