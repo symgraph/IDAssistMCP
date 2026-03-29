@@ -18,15 +18,16 @@ class ToolInfo:
     annotation: str  # "read_only", "modify", or "non_idempotent"
 
 
-# Complete catalog of all 38 MCP tools
+# Complete catalog of all 39 MCP tools
 TOOL_CATALOG: List[ToolInfo] = [
     # Binary Management (2)
     ToolInfo("list_binaries", "List Binaries", "Binary Management", "List the currently loaded binary", "read_only"),
     ToolInfo("get_binary_info", "Get Binary Info", "Binary Management", "Get detailed binary metadata", "read_only"),
 
-    # Code Analysis (3)
+    # Code Analysis (4)
     ToolInfo("get_code", "Get Code", "Code Analysis", "Get function code (decompile or disasm format)", "read_only"),
     ToolInfo("analyze_function", "Analyze Function", "Code Analysis", "Comprehensive function analysis with CFG, callers, decompilation", "read_only"),
+    ToolInfo("get_function_signature", "Function Signature", "Code Analysis", "Get the native byte signature for a function", "read_only"),
     ToolInfo("get_basic_blocks", "Get Basic Blocks", "Code Analysis", "Get basic blocks (CFG) for a function", "read_only"),
 
     # Consolidated Tools (4)

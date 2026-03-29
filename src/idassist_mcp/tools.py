@@ -17,6 +17,7 @@ from typing import Any, Dict, List, Optional
 from mcp.server.fastmcp import Context, FastMCP
 
 from .context import IDAContextManager
+from .function_signature_generator import IDAFunctionSignatureGenerator
 from .logging import log
 from .tasks import TaskStatus, get_task_manager
 from .utils import (
@@ -320,6 +321,33 @@ def register_tools(mcp: FastMCP, disabled_tools=None):
             result["decompiled"] = None
 
         return result
+
+    @_tool("get_function_signature", annotations=READ_ONLY)
+    def get_function_signature(function_name_or_address: str, ctx: Context) -> dict:
+        """Get the native IDAssist byte signature for a function."""
+        holder = {"error": None, "name": None, "address": None, "start_ea": None}
+
+        def _collect() -> None:
+            ea = _resolve(function_name_or_address)
+            func = ida_funcs.get_func(ea)
+            if not func:
+                holder["error"] = {"error": f"No function at {hex(ea)}"}
+                return
+
+            holder["name"] = ida_funcs.get_func_name(func.start_ea) or f"sub_{func.start_ea:x}"
+            holder["address"] = hex(func.start_ea)
+            holder["start_ea"] = func.start_ea
+
+        execute_on_main_thread(_collect)
+        if holder["error"] is not None:
+            return holder["error"]
+
+        generator = IDAFunctionSignatureGenerator()
+        return {
+            "name": holder["name"],
+            "address": holder["address"],
+            "signature": generator.generate(holder["start_ea"]),
+        }
 
     # ================================================================== #
     #  5. get_basic_blocks
