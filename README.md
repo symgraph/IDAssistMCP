@@ -123,7 +123,7 @@ Configure via environment variables with the `IDASSISTMCP_` prefix:
 ### Variables (1 consolidated)
 | Tool | Actions | Description |
 |------|---------|-------------|
-| `variables` | `action`: list, rename | List or rename local variables via Hex-Rays |
+| `variables` | `action`: list, rename | List locals, or rename local/global variables with `scope`: `auto`, `local`, `global` |
 
 ### Types (2 — 1 consolidated + 1 standalone)
 | Tool | Actions / Description |

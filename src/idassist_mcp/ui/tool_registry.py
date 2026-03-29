@@ -33,7 +33,7 @@ TOOL_CATALOG: List[ToolInfo] = [
     # Consolidated Tools (4)
     ToolInfo("xrefs_tool", "Cross-References", "Cross-References", "Get xrefs to/from address, optionally include callers/callees", "read_only"),
     ToolInfo("comments_tool", "Comments", "Comments & Variables", "Get, set, list, or remove comments (action parameter)", "modify"),
-    ToolInfo("variables_tool", "Variables", "Comments & Variables", "List or rename local variables (action parameter)", "modify"),
+    ToolInfo("variables_tool", "Variables", "Comments & Variables", "List variables or rename local/global variables (action parameter)", "modify"),
     ToolInfo("types_tool", "Types", "Types", "List, set, create_struct, or create_enum (action parameter)", "modify"),
 
     # Function Discovery (5)

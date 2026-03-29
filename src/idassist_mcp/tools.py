@@ -580,14 +580,18 @@ def register_tools(mcp: FastMCP, disabled_tools=None):
     def variables(action: str, ctx: Context,
                        function_name_or_address: str = "",
                        var_name: str = "",
-                       new_name: str = "") -> dict:
-        """Unified tool for managing local variables (list, rename).
+                       new_name: str = "",
+                       scope: str = "auto",
+                       address_or_name: str = "") -> dict:
+        """Unified tool for managing local and global variables (list, rename).
 
         Args:
-            action: 'list' (get variables for a function) or 'rename' (rename a variable)
+            action: 'list' (get variables for a function) or 'rename' (rename a variable/symbol)
             function_name_or_address: Function name or hex address
-            var_name: Current variable name (for 'rename')
+            var_name: Current local variable name, or global symbol name fallback for 'rename'
             new_name: New variable name (for 'rename')
+            scope: 'auto', 'local', or 'global'
+            address_or_name: Global/data symbol address or name (for global rename)
 
         Returns:
             Dictionary with variable data or confirmation message.
@@ -623,21 +627,62 @@ def register_tools(mcp: FastMCP, disabled_tools=None):
                 return {"error": f"Cannot get variables: {e}"}
 
         elif action == "rename":
-            if not function_name_or_address:
-                return {"error": "function_name_or_address is required for 'rename' action"}
-            if not var_name or not new_name:
-                return {"error": "var_name and new_name are required for 'rename' action"}
+            if not new_name:
+                return {"error": "new_name is required for 'rename' action"}
 
-            ea = _resolve(function_name_or_address)
-            func_ea = ida_funcs.get_func(ea)
-            if not func_ea:
-                return {"error": f"No function at {hex(ea)}"}
+            normalized_scope = (scope or "auto").lower()
+            if normalized_scope not in {"auto", "local", "global"}:
+                return {"error": "scope must be 'auto', 'local', or 'global'"}
+
+            local_requested = (
+                normalized_scope == "local"
+                or (
+                    normalized_scope == "auto"
+                    and function_name_or_address
+                    and var_name
+                    and not address_or_name
+                )
+            )
+
+            if local_requested:
+                if not function_name_or_address or not var_name:
+                    return {
+                        "error": "function_name_or_address and var_name are required for local rename"
+                    }
+
+                ea = _resolve(function_name_or_address)
+                func_ea = ida_funcs.get_func(ea)
+                if not func_ea:
+                    return {"error": f"No function at {hex(ea)}"}
+
+                try:
+                    if ida_hexrays.rename_lvar(func_ea.start_ea, var_name, new_name):
+                        return {
+                            "status": "ok",
+                            "message": f"Renamed local variable '{var_name}' to '{new_name}'",
+                            "scope": "local",
+                            "function": ida_funcs.get_func_name(func_ea.start_ea),
+                        }
+                    return {"error": f"rename_lvar failed (variable '{var_name}' may not exist)"}
+                except Exception as e:
+                    return {"error": f"Failed: {e}"}
+
+            target = address_or_name or var_name
+            if not target:
+                return {"error": "address_or_name or var_name is required for global rename"}
 
             try:
-                if ida_hexrays.rename_lvar(func_ea.start_ea, var_name, new_name):
-                    return {"status": "ok", "message": f"Renamed variable '{var_name}' to '{new_name}'"}
-                else:
-                    return {"error": f"rename_lvar failed (variable '{var_name}' may not exist)"}
+                global_result = _rename_global_symbol_impl(target, new_name)
+                if global_result["success"]:
+                    return {
+                        "status": "ok",
+                        "message": global_result["message"],
+                        "scope": "global",
+                        "address": global_result["address"],
+                        "old_name": global_result["old_name"],
+                        "new_name": global_result["new_name"],
+                    }
+                return {"error": global_result["error"]}
             except Exception as e:
                 return {"error": f"Failed: {e}"}
 
@@ -992,6 +1037,32 @@ def register_tools(mcp: FastMCP, disabled_tools=None):
     # ================================================================== #
     #  15-16. Symbol Management
     # ================================================================== #
+
+    def _rename_global_symbol_impl(address_or_name: str, new_name: str) -> dict:
+        """Rename a non-function symbol resolved by address or name."""
+        ea = _resolve(address_or_name)
+        if ida_funcs.get_func(ea):
+            return {
+                "success": False,
+                "error": (
+                    f"Target '{address_or_name}' resolves to a function at {hex(ea)}; "
+                    "use rename_symbol for functions or variables(action='rename', scope='local') for locals"
+                ),
+            }
+
+        old_name = ida_name.get_name(ea) or f"loc_{ea:x}"
+        if ida_name.set_name(ea, new_name, ida_name.SN_CHECK):
+            return {
+                "success": True,
+                "message": f"Renamed global symbol '{old_name}' to '{new_name}'",
+                "address": hex(ea),
+                "old_name": old_name,
+                "new_name": new_name,
+            }
+        return {
+            "success": False,
+            "error": f"Failed to rename global symbol '{old_name}' to '{new_name}'",
+        }
 
     @_tool("rename_symbol", annotations=MODIFY)
     @_ida_main_thread
