@@ -1,17 +1,19 @@
 """
 Comprehensive MCP tool implementations for IDAssistMCP
 
-This module provides 38 IDA Pro integration tools registered as
+This module provides 41 IDA Pro integration tools registered as
 FastMCP tools. All tools that call IDA APIs use @_ida_main_thread to dispatch
 onto IDA's main thread (required for both reads and writes).
 
 Consolidated tools (5): get_code, comments, variables, types, xrefs
-Standalone tools (33): see register_tools() for the full list
+Standalone tools (36): see register_tools() for the full list
 """
 
+import builtins
 import functools
 import json
 import re
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from mcp.server.fastmcp import Context, FastMCP
@@ -32,6 +34,7 @@ try:
     import idaapi
     import idautils
     import idc
+    import ida_auto
     import ida_bytes
     import ida_entry
     import ida_funcs
@@ -39,6 +42,7 @@ try:
     import ida_ida
     import ida_kernwin
     import ida_lines
+    import ida_loader
     import ida_name
     import ida_nalt
     import ida_segment
@@ -62,6 +66,49 @@ def _resolve(name_or_addr: str) -> int:
     if ea is None:
         raise ValueError(f"Cannot resolve '{name_or_addr}' to an address")
     return ea
+
+
+def _parse_byte_values(value: Any) -> bytes:
+    """Parse bytes from a hex string or integer array."""
+    if isinstance(value, str):
+        normalized = value.replace("0x", "").replace("0X", "")
+        normalized = re.sub(r"[,\s]", "", normalized)
+        if not normalized:
+            return b""
+        if len(normalized) % 2 != 0:
+            raise ValueError("hex string must contain an even number of characters")
+        try:
+            return builtins.bytes.fromhex(normalized)
+        except ValueError as e:
+            raise ValueError(f"invalid hex string: {value}") from e
+
+    if isinstance(value, (list, tuple)):
+        parsed = bytearray()
+        for index, item in enumerate(value):
+            if not isinstance(item, int):
+                raise ValueError(f"array element at index {index} is not an integer")
+            if item < 0 or item > 255:
+                raise ValueError(f"array element at index {index} out of range (0-255): {item}")
+            parsed.append(item)
+        return builtins.bytes(parsed)
+
+    raise ValueError("bytes must be a hex string or integer array")
+
+
+def _format_hex(data: bytes) -> str:
+    """Format bytes as space-separated uppercase hex."""
+    return " ".join(f"{b:02X}" for b in data)
+
+
+def _coerce_assembled_bytes(value: Any) -> bytes:
+    """Normalize IDA assembler output to bytes."""
+    if isinstance(value, builtins.bytes):
+        return value
+    if isinstance(value, bytearray):
+        return builtins.bytes(value)
+    if isinstance(value, str):
+        return value.encode("latin1")
+    return builtins.bytes(value)
 
 
 # --------------------------------------------------------------------------- #
@@ -142,6 +189,11 @@ def register_tools(mcp: FastMCP, disabled_tools=None):
         "readOnlyHint": False,
         "idempotentHint": False,
         "openWorldHint": False,
+    }
+    FILE_WRITE = {
+        "readOnlyHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
     }
 
     # ================================================================== #
@@ -1441,37 +1493,179 @@ def register_tools(mcp: FastMCP, disabled_tools=None):
         }
 
     # ================================================================== #
-    #  26. Patching
+    #  26-28. Patching and Export
     # ================================================================== #
 
     @_tool("patch_bytes", annotations=NON_IDEMPOTENT)
     @_ida_main_thread
-    def patch_bytes(address: str, hex_bytes: str, ctx: Context) -> str:
+    def patch_bytes(address: str, ctx: Context, hex_bytes: Optional[str] = None,
+                    bytes: Optional[Any] = None, clear_code_units: bool = False) -> dict:
         """Patch bytes in the IDB at a given address.
 
         WARNING: This modifies the IDB. The operation cannot be easily undone.
 
         Args:
             address: Hex address to patch at
-            hex_bytes: Hex string of bytes to write (e.g. '90909090')
+            hex_bytes: Backward-compatible hex string of bytes to write (e.g. '90909090')
+            bytes: Hex string or integer array of bytes to write
+            clear_code_units: If true, undefine existing items across the patched range before writing
 
         Returns:
-            Success or failure message.
+            Dictionary with patch range and before/after bytes.
         """
         ea = parse_address(address)
         if ea is None:
-            return f"Invalid address: {address}"
+            return {"error": f"Invalid address: {address}"}
+
+        byte_input = bytes if bytes is not None else hex_bytes
+        if byte_input is None:
+            return {"error": "bytes or hex_bytes is required"}
 
         try:
-            data = bytes.fromhex(hex_bytes.replace(" ", ""))
-        except ValueError:
-            return f"Invalid hex string: {hex_bytes}"
+            data = _parse_byte_values(byte_input)
+        except ValueError as e:
+            return {"error": f"Invalid bytes value: {e}"}
 
+        if not data:
+            return {"error": "No bytes provided to patch"}
+
+        old_bytes = ida_bytes.get_bytes(ea, len(data))
+        if old_bytes is None or len(old_bytes) != len(data):
+            return {"error": f"Cannot read {len(data)} original byte(s) at {hex(ea)}"}
+
+        end_ea = ea + len(data) - 1
+        if clear_code_units:
+            ida_bytes.del_items(ea, ida_bytes.DELIT_EXPAND, len(data))
         ida_bytes.patch_bytes(ea, data)
-        return f"Patched {len(data)} bytes at {hex(ea)}"
+        ida_auto.auto_make_code(ea)
+
+        return {
+            "status": "patched",
+            "address": hex(ea),
+            "end_address": hex(end_ea),
+            "size": len(data),
+            "before": _format_hex(old_bytes),
+            "after": _format_hex(data),
+            "clear_code_units": clear_code_units,
+        }
+
+    @_tool("assemble_code", annotations=NON_IDEMPOTENT)
+    @_ida_main_thread
+    def assemble_code(address: str, code: str, ctx: Context,
+                      patch: bool = True, clear_code_units: bool = True) -> dict:
+        """Assemble instruction text at an address and optionally patch it.
+
+        Args:
+            address: Hex address to assemble at
+            code: Single instruction or newline-separated assembly block
+            patch: If true, patch assembled bytes into the IDB
+            clear_code_units: If true, undefine existing items across the assembled range first
+
+        Returns:
+            Dictionary with assembled bytes and optional before/after patch details.
+        """
+        ea = parse_address(address)
+        if ea is None:
+            return {"error": f"Invalid address: {address}"}
+
+        lines = [line.strip() for line in code.splitlines() if line.strip()]
+        if not lines:
+            return {"error": "No assembly instructions provided"}
+
+        ok, assembled_result = idautils.Assemble(ea, lines)
+        if not ok:
+            return {"error": assembled_result}
+
+        if isinstance(assembled_result, list):
+            assembled = b"".join(_coerce_assembled_bytes(part) for part in assembled_result)
+        else:
+            assembled = _coerce_assembled_bytes(assembled_result)
+
+        if not assembled:
+            return {"error": "Assembler produced no bytes"}
+
+        end_ea = ea + len(assembled) - 1
+        result = {
+            "status": "assembled",
+            "address": hex(ea),
+            "end_address": hex(end_ea),
+            "size": len(assembled),
+            "bytes": _format_hex(assembled),
+            "instruction_lines": len(lines),
+            "patched": False,
+        }
+
+        if not patch:
+            return result
+
+        old_bytes = ida_bytes.get_bytes(ea, len(assembled))
+        if old_bytes is None or len(old_bytes) != len(assembled):
+            return {"error": f"Cannot read {len(assembled)} original byte(s) at {hex(ea)}"}
+
+        if clear_code_units:
+            ida_bytes.del_items(ea, ida_bytes.DELIT_EXPAND, len(assembled))
+        ida_bytes.patch_bytes(ea, assembled)
+        ida_auto.auto_make_code(ea)
+
+        result.update({
+            "status": "assembled_and_patched",
+            "patched": True,
+            "before": _format_hex(old_bytes),
+            "after": _format_hex(assembled),
+            "clear_code_units": clear_code_units,
+        })
+        return result
+
+    @_tool("export_program", annotations=FILE_WRITE)
+    @_ida_main_thread
+    def export_program(output_path: str, ctx: Context, format: str = "binary",
+                       overwrite: bool = False) -> dict:
+        """Export the current IDA database or patched binary to disk.
+
+        Args:
+            output_path: Destination path on the host filesystem
+            format: 'binary' for executable output or 'idb' for database output
+            overwrite: Whether to replace an existing output file
+
+        Returns:
+            Dictionary with export status and output metadata.
+        """
+        if not output_path or not output_path.strip():
+            return {"error": "output_path is required"}
+
+        destination = Path(output_path).expanduser()
+        if destination.exists() and not overwrite:
+            return {"error": f"Output file already exists: {destination} (set overwrite=true to replace it)"}
+
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        export_format = (format or "binary").lower()
+
+        if export_format == "binary":
+            result = idc.gen_file(
+                idc.OFILE_EXE,
+                str(destination),
+                ida_ida.inf_get_min_ea(),
+                ida_ida.inf_get_max_ea(),
+                0,
+            )
+            if result != 1:
+                return {"error": f"Binary export failed for {destination}"}
+        elif export_format in ("idb", "database"):
+            if not ida_loader.save_database(str(destination), 0):
+                return {"error": f"Database export failed for {destination}"}
+            export_format = "idb"
+        else:
+            return {"error": "Unsupported format. Use 'binary' or 'idb'."}
+
+        return {
+            "status": "exported",
+            "format": export_format,
+            "output_path": str(destination.resolve()),
+            "bytes_written": destination.stat().st_size if destination.exists() else None,
+        }
 
     # ================================================================== #
-    #  27-28. Navigation
+    #  29-30. Navigation
     # ================================================================== #
 
     @_tool("navigate_to", annotations=MODIFY)
@@ -1831,7 +2025,7 @@ def register_tools(mcp: FastMCP, disabled_tools=None):
         }
 
     # ================================================================== #
-    #  35-38. Task Management
+    #  38-41. Task Management
     # ================================================================== #
 
     @_tool("start_task", annotations=NON_IDEMPOTENT)

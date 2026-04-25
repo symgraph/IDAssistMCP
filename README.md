@@ -6,7 +6,7 @@ Standalone MCP (Model Context Protocol) server plugin for **IDA Pro 9.x** that e
 
 ## Features
 
-- **38 MCP tools** covering binary analysis, decompilation, cross-references, symbol management, type system, navigation, and more
+- **41 MCP tools** covering binary analysis, decompilation, cross-references, symbol management, type system, navigation, patching, export, and more
 - **6 consolidated tools** with `action`/`format`/`direction` parameters for comments, variables, types, xrefs, bookmarks, and code
 - **8 MCP resources** for browsable binary metadata (triage, functions, imports, exports, strings, info, segments, sections)
 - **7 guided prompts** for common reverse engineering workflows (function analysis, vulnerability identification, documentation, data flow tracing, function comparison, struct recovery, network protocol analysis)
@@ -165,10 +165,12 @@ Configure via environment variables with the `IDASSISTMCP_` prefix:
 | `create_data_var` | Define data variable at address (byte/word/dword/qword/float/ascii/C type) |
 | `get_data_vars` | List defined data variables (non-code items) |
 
-### Patching (1)
+### Patching (3)
 | Tool | Description |
 |------|-------------|
-| `patch_bytes` | Patch bytes in IDB |
+| `patch_bytes` | Patch raw bytes in IDB |
+| `assemble_code` | Assemble instruction text at an address and optionally patch it |
+| `export_program` | Export the patched binary or IDA database to disk |
 
 ### Navigation (4)
 | Tool | Description |
@@ -198,7 +200,7 @@ IDAssistMCP/
         ├── __init__.py
         ├── server.py                  # FastMCP server + transport
         ├── context.py                 # Single-binary IDA context
-        ├── tools.py                   # 38 MCP tools (IDA API)
+        ├── tools.py                   # 41 MCP tools (IDA API)
         ├── resources.py               # 8 MCP resources
         ├── prompts.py                 # 7 guided workflow prompts
         ├── config.py                  # Pydantic settings

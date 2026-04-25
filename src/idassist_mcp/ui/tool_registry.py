@@ -18,7 +18,7 @@ class ToolInfo:
     annotation: str  # "read_only", "modify", or "non_idempotent"
 
 
-# Complete catalog of all 39 MCP tools
+# Complete catalog of all 41 MCP tools
 TOOL_CATALOG: List[ToolInfo] = [
     # Binary Management (2)
     ToolInfo("list_binaries", "List Binaries", "Binary Management", "List the currently loaded binary", "read_only"),
@@ -60,8 +60,10 @@ TOOL_CATALOG: List[ToolInfo] = [
     ToolInfo("search_bytes", "Search Bytes", "Data Analysis", "Search for byte pattern", "read_only"),
     ToolInfo("search_strings", "Search Strings", "Data Analysis", "Search strings by pattern", "read_only"),
 
-    # Patching (1)
+    # Patching (3)
     ToolInfo("patch_bytes", "Patch Bytes", "Patching", "Patch bytes in the IDB", "non_idempotent"),
+    ToolInfo("assemble_code", "Assemble Code", "Patching", "Assemble instruction text and optionally patch bytes", "non_idempotent"),
+    ToolInfo("export_program", "Export Program", "Patching", "Export the patched binary or IDA database", "non_idempotent"),
 
     # Navigation (4)
     ToolInfo("navigate_to", "Navigate To", "Navigation", "Move IDA cursor to address", "modify"),
