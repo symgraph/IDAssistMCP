@@ -1,11 +1,11 @@
 """
 Comprehensive MCP tool implementations for IDAssistMCP
 
-This module provides 41 IDA Pro integration tools registered as
+This module provides 42 IDA Pro integration tools registered as
 FastMCP tools. All tools that call IDA APIs use @_ida_main_thread to dispatch
 onto IDA's main thread (required for both reads and writes).
 
-Consolidated tools (5): get_code, comments, variables, types, xrefs
+Consolidated tools (6): get_code, comments, variables, types, xrefs, bookmarks
 Standalone tools (36): see register_tools() for the full list
 """
 
@@ -47,6 +47,7 @@ try:
     import ida_nalt
     import ida_segment
     import ida_typeinf
+    import ida_ua
     import ida_xref
     _IN_IDA = True
 except ImportError:
@@ -2025,7 +2026,113 @@ def register_tools(mcp: FastMCP, disabled_tools=None):
         }
 
     # ================================================================== #
-    #  38-41. Task Management
+    #  38. define (IDA U / C / P hotkeys)
+    # ================================================================== #
+
+    @_tool("define", annotations=NON_IDEMPOTENT)
+    @_ida_main_thread
+    def define(action: str, address: str, ctx: Context,
+               end_address: str = "", size: int = 0) -> dict:
+        """Undefine items, force code, or create a function (IDA U/C/P hotkeys).
+
+        Bytes are never modified — only the IDB interpretation of them.
+        Typical order when reclaiming misparsed data: 'undefine', then 'code',
+        then 'function'.
+
+        Args:
+            action: 'undefine' (U), 'code' (C), or 'function' (P)
+            address: Hex start address
+            end_address: Optional exclusive end address for range operations
+            size: Optional byte count, alternative to end_address
+
+        Returns:
+            Dictionary with operation status, or an error.
+        """
+        ea = parse_address(address)
+        if ea is None:
+            return {"error": f"Invalid address: {address}"}
+
+        if end_address:
+            end_ea = parse_address(end_address)
+            if end_ea is None:
+                return {"error": f"Invalid end_address: {end_address}"}
+            if end_ea <= ea:
+                return {"error": "end_address must be greater than address"}
+        elif size:
+            if size < 0:
+                return {"error": "size must be positive"}
+            end_ea = ea + size
+        else:
+            end_ea = idaapi.BADADDR
+
+        if action == "undefine":
+            count = (end_ea - ea) if end_ea != idaapi.BADADDR else (ida_bytes.get_item_size(ea) or 1)
+            flags = ida_bytes.DELIT_SIMPLE if end_ea != idaapi.BADADDR else ida_bytes.DELIT_EXPAND
+            if not ida_bytes.del_items(ea, flags, count):
+                return {"error": f"del_items failed at {hex(ea)}"}
+            return {
+                "status": "ok",
+                "address": hex(ea),
+                "end_address": hex(ea + count),
+                "size": count,
+            }
+
+        elif action == "code":
+            stop = end_ea if end_ea != idaapi.BADADDR else ea + 1
+            if end_ea != idaapi.BADADDR:
+                cur = ea
+                while cur < stop:
+                    length = ida_ua.decode_insn(ida_ua.insn_t(), cur)
+                    if not length:
+                        return {"error": f"Cannot decode instruction at {hex(cur)}"}
+                    if cur + length > stop:
+                        return {
+                            "error": f"Instruction at {hex(cur)} crosses end_address {hex(stop)}",
+                            "address": hex(ea),
+                            "instructions": 0,
+                        }
+                    cur += length
+
+            cur = ea
+            made = 0
+            while cur < stop:
+                length = ida_ua.create_insn(cur)
+                if not length:
+                    return {
+                        "error": f"Cannot decode instruction at {hex(cur)} "
+                                 "(undefine the range first?)",
+                        "address": hex(ea),
+                        "instructions": made,
+                    }
+                cur += length
+                made += 1
+            return {
+                "status": "ok",
+                "address": hex(ea),
+                "end_address": hex(cur),
+                "instructions": made,
+            }
+
+        elif action == "function":
+            # BADADDR end lets IDA determine the function end from control flow.
+            if not ida_funcs.add_func(ea, end_ea):
+                return {"error": f"add_func failed at {hex(ea)}"}
+            func = ida_funcs.get_func(ea)
+            if not func:
+                return {"error": f"Function created but not found at {hex(ea)}"}
+            return {
+                "status": "ok",
+                "name": ida_funcs.get_func_name(func.start_ea) or f"sub_{func.start_ea:x}",
+                "address": hex(func.start_ea),
+                "end": hex(func.end_ea),
+                "size": func.end_ea - func.start_ea,
+            }
+
+        else:
+            return {"error": f"Unknown action '{action}'. Use 'undefine', 'code', or 'function'."}
+
+    # ================================================================== #
+    #  39-42. Task Management
     # ================================================================== #
 
     @_tool("start_task", annotations=NON_IDEMPOTENT)

@@ -6,7 +6,7 @@ Standalone MCP (Model Context Protocol) server plugin for **IDA Pro 9.x** that e
 
 ## Features
 
-- **41 MCP tools** covering binary analysis, decompilation, cross-references, symbol management, type system, navigation, patching, export, and more
+- **42 MCP tools** covering binary analysis, decompilation, cross-references, symbol management, type system, navigation, patching, export, and more
 - **6 consolidated tools** with `action`/`format`/`direction` parameters for comments, variables, types, xrefs, bookmarks, and code
 - **8 MCP resources** for browsable binary metadata (triage, functions, imports, exports, strings, info, segments, sections)
 - **7 guided prompts** for common reverse engineering workflows (function analysis, vulnerability identification, documentation, data flow tracing, function comparison, struct recovery, network protocol analysis)
@@ -155,7 +155,7 @@ Configure via environment variables with the `IDASSISTMCP_` prefix:
 | `get_segments` | Memory segments with permissions |
 | `get_entry_points` | All binary entry points |
 
-### Data Analysis (6)
+### Data Analysis (7)
 | Tool | Description |
 |------|-------------|
 | `read_memory` | Read raw bytes at address |
@@ -164,6 +164,7 @@ Configure via environment variables with the `IDASSISTMCP_` prefix:
 | `search_strings` | String search with pagination |
 | `create_data_var` | Define data variable at address (byte/word/dword/qword/float/ascii/C type) |
 | `get_data_vars` | List defined data variables (non-code items) |
+| `define` | **IDA `U`/`C`/`P` hotkeys** - actions: `undefine`, `code`, `function` (bytes untouched) |
 
 ### Patching (3)
 | Tool | Description |
@@ -200,7 +201,7 @@ IDAssistMCP/
         ├── __init__.py
         ├── server.py                  # FastMCP server + transport
         ├── context.py                 # Single-binary IDA context
-        ├── tools.py                   # 41 MCP tools (IDA API)
+        ├── tools.py                   # 42 MCP tools (IDA API)
         ├── resources.py               # 8 MCP resources
         ├── prompts.py                 # 7 guided workflow prompts
         ├── config.py                  # Pydantic settings
