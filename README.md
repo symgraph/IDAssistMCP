@@ -1,5 +1,8 @@
 # IDAssistMCP
 
+> [!IMPORTANT]
+> **Planned archival:** IDAssistMCP is planned for archival as IDA Pro introduces a bundled native MCP server. Native support removes the need to maintain a separate MCP integration and keeps it aligned with IDA Pro itself. Please use IDA Pro's native MCP server once it is available in your installed version. This repository will remain available for reference.
+
 Standalone MCP (Model Context Protocol) server plugin for **IDA Pro 9.x** that exposes IDA's analysis capabilities to LLM clients like Claude Desktop.
 
 ![Screenshot](/docs/screenshots/main_interface.png)
